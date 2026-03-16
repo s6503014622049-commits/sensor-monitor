@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ระบบตรวจสอบ Sensor ชิ้นงาน - JCL18A3-B-Z/BX</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Sarabun:wght@300;400;600;700&display=swap');
+
+  :root {
+    --bg-dark: #0a0e14;
+    --bg-panel: #0f1620;
+    --bg-card: #131c28;
+    --border: #1e3048;
+    --border-bright: #2a4a6e;
+    --accent-blue: #00b4d8;
+    --accent-cyan: #00f5d4;
+    --accent-green: #39ff14;
+    --accent-red: #ff3131;
+    --accent-yellow: #ffd60a;
+    --accent-orange: #ff6b2b;
+    --text-primary: #e0f0ff;
+    --text-secondary: #7a9bb5;
+    --text-mono: #00f5d4;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    font-family: 'Sarabun', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,180,216,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,180,216,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container { position: relative; z-index: 1; padding: 16px; max-width: 1200px; margin: 0 auto; }
+
+  /* HEADER */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border-bright);
+    padding-bottom: 12px;
+    margin-bottom: 20px;
+  }
+  .header-left { display: flex; align-items: center; gap: 14px; }
+  .logo-box {
+    width: 46px; height: 46px;
+    background: linear-gradient(135deg, #00b4d8, #00f5d4);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+  }
+  .title-main { font-size: 18px; font-weight: 700; color: var(--accent-cyan); letter-spacing: 1px; }
+  .title-sub { font-size: 11px; color: var(--text-secondary); font-family: 'Share Tech Mono', monospace; margin-top: 2px; }
+
+  .header-right { display: flex; align-items: center; gap: 20px; }
+  .clock { font-family: 'Share Tech Mono', monospace; font-size: 20px; color: var(--accent-cyan); }
+  .date-txt { font-size: 11px; color: var(--text-secondary); text-align: right; margin-top: 2px; }
+
+  .system-status {
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(57,255,20,0.08);
+    border: 1px solid rgba(57,255,20,0.3);
+    border-radius: 20px; padding: 6px 14px;
+    font-size: 12px; font-weight: 600; color: var(--accent-green);
+  }
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent-green);
+    animation: pulse-green 1.5s infinite;
+  }
+  @keyframes pulse-green {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(57,255,20,0.6); }
+    50% { box-shadow: 0 0 0 6px rgba(57,255,20,0); }
+  }
+
+  /* SUMMARY CARDS */
+  .summary-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .summary-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .summary-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  }
+  .summary-card.green::before { background: linear-gradient(90deg, var(--accent-green), transparent); }
+  .summary-card.red::before { background: linear-gradient(90deg, var(--accent-red), transparent); }
+  .summary-card.blue::before { background: linear-gradient(90deg, var(--accent-blue), transparent); }
+  .summary-card.yellow::before { background: linear-gradient(90deg, var(--accent-yellow), transparent); }
+
+  .summary-label { font-size: 11px; color: var(--text-secondary); font-family: 'Share Tech Mono', monospace; text-transform: uppercase; letter-spacing: 1px; }
+  .summary-value { font-size: 36px; font-weight: 700; font-family: 'Share Tech Mono', monospace; margin-top: 4px; line-height: 1; }
+  .summary-card.green .summary-value { color: var(--accent-green); }
+  .summary-card.red .summary-value { color: var(--accent-red); }
+  .summary-card.blue .summary-value { color: var(--accent-blue); }
+  .summary-card.yellow .summary-value { color: var(--accent-yellow); }
+  .summary-unit { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+
+  /* MAIN LAYOUT */
+  .main-layout {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 16px;
+  }
+
+  /* SENSOR GRID */
+  .panel {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+  }
+  .panel-title {
+    font-size: 13px;
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--accent-blue);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .panel-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--border-bright), transparent);
+  }
+
+  .sensor-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+
+  .sensor-card {
+    background: var(--bg-card);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .sensor-card:hover { transform: translateY(-2px); }
+  .sensor-card.active {
+    border-color: var(--accent-green);
+    background: rgba(57,255,20,0.05);
+    box-shadow: 0 0 20px rgba(57,255,20,0.15), inset 0 0 20px rgba(57,255,20,0.03);
+  }
+  .sensor-card.empty {
+    border-color: var(--accent-red);
+    background: rgba(255,49,49,0.06);
+    box-shadow: 0 0 20px rgba(255,49,49,0.15), inset 0 0 20px rgba(255,49,49,0.03);
+    animation: blink-border 1s infinite;
+  }
+  .sensor-card.warning {
+    border-color: var(--accent-yellow);
+    background: rgba(255,214,10,0.05);
+  }
+  @keyframes blink-border {
+    0%, 100% { box-shadow: 0 0 20px rgba(255,49,49,0.15); }
+    50% { box-shadow: 0 0 30px rgba(255,49,49,0.4); }
+  }
+
+  .sensor-id {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+  }
+  .sensor-icon {
+    width: 60px; height: 60px;
+    margin: 0 auto 10px;
+    position: relative;
+  }
+  .sensor-body {
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    border: 3px solid;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+    transition: all 0.3s;
+  }
+  .sensor-card.active .sensor-body {
+    border-color: var(--accent-green);
+    background: rgba(57,255,20,0.1);
+    box-shadow: 0 0 15px rgba(57,255,20,0.4);
+  }
+  .sensor-card.empty .sensor-body {
+    border-color: var(--accent-red);
+    background: rgba(255,49,49,0.1);
+    box-shadow: 0 0 15px rgba(255,49,49,0.4);
+  }
+  .sensor-card.warning .sensor-body {
+    border-color: var(--accent-yellow);
+    background: rgba(255,214,10,0.1);
+  }
+
+  .sensor-status-text {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+  .sensor-card.active .sensor-status-text { color: var(--accent-green); }
+  .sensor-card.empty .sensor-status-text { color: var(--accent-red); }
+  .sensor-card.warning .sensor-status-text { color: var(--accent-yellow); }
+
+  .sensor-detail { font-size: 10px; color: var(--text-secondary); font-family: 'Share Tech Mono', monospace; }
+
+  /* Signal wave animation */
+  .signal-ring {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    border: 2px solid;
+    opacity: 0;
+  }
+  .sensor-card.active .signal-ring {
+    border-color: var(--accent-green);
+    animation: ripple 2s infinite;
+  }
+  @keyframes ripple {
+    0% { transform: translate(-50%,-50%) scale(1); opacity: 0.8; }
+    100% { transform: translate(-50%,-50%) scale(1.8); opacity: 0; }
+  }
+
+  /* BOX VISUAL */
+  .box-visual {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 16px;
+  }
+  .box-title {
+    font-size: 11px;
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 12px;
+  }
+  .box-layout {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .box-container {
+    width: 100%;
+    max-width: 360px;
+    background: rgba(30,48,72,0.5);
+    border: 2px solid var(--border-bright);
+    border-radius: 8px;
+    padding: 16px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    position: relative;
+  }
+  .box-container::before {
+    content: 'กล่องชิ้นงาน';
+    position: absolute;
+    top: -10px; left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-card);
+    padding: 0 8px;
+    font-size: 10px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+  .mini-sensor {
+    aspect-ratio: 1;
+    border-radius: 6px;
+    border: 2px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    transition: all 0.3s;
+    font-size: 9px;
+    font-family: 'Share Tech Mono', monospace;
+  }
+  .mini-sensor.on {
+    border-color: var(--accent-green);
+    background: rgba(57,255,20,0.1);
+    color: var(--accent-green);
+    box-shadow: 0 0 8px rgba(57,255,20,0.3);
+  }
+  .mini-sensor.off {
+    border-color: var(--accent-red);
+    background: rgba(255,49,49,0.08);
+    color: var(--accent-red);
+    box-shadow: 0 0 8px rgba(255,49,49,0.2);
+    animation: mini-blink 0.8s infinite;
+  }
+  @keyframes mini-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  .mini-dot {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  /* RIGHT PANEL */
+  .right-col { display: flex; flex-direction: column; gap: 14px; }
+
+  /* ALARM LOG */
+  .alarm-list { display: flex; flex-direction: column; gap: 6px; max-height: 200px; overflow-y: auto; }
+  .alarm-list::-webkit-scrollbar { width: 4px; }
+  .alarm-list::-webkit-scrollbar-track { background: var(--bg-dark); }
+  .alarm-list::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 2px; }
+
+  .alarm-item {
+    display: flex;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border-left: 3px solid;
+    background: rgba(255,255,255,0.02);
+    font-size: 11px;
+  }
+  .alarm-item.crit { border-color: var(--accent-red); }
+  .alarm-item.warn { border-color: var(--accent-yellow); }
+  .alarm-item.info { border-color: var(--accent-blue); }
+  .alarm-time { font-family: 'Share Tech Mono', monospace; color: var(--text-secondary); white-space: nowrap; }
+  .alarm-msg { color: var(--text-primary); line-height: 1.4; }
+
+  /* LOGIC CONDITIONS */
+  .condition-list { display: flex; flex-direction: column; gap: 8px; }
+  .condition-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.02);
+    font-size: 12px;
+  }
+  .cond-icon { font-size: 16px; flex-shrink: 0; }
+  .cond-title { font-weight: 700; color: var(--text-primary); margin-bottom: 2px; }
+  .cond-desc { color: var(--text-secondary); font-size: 11px; line-height: 1.5; }
+
+  /* OUTPUT STATUS */
+  .output-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .output-card {
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    text-align: center;
+  }
+  .output-card.active-out {
+    border-color: var(--accent-green);
+    background: rgba(57,255,20,0.07);
+  }
+  .output-card.inactive-out {
+    border-color: var(--border);
+    background: var(--bg-card);
+    opacity: 0.5;
+  }
+  .out-label { font-size: 10px; font-family: 'Share Tech Mono', monospace; color: var(--text-secondary); letter-spacing: 1px; margin-bottom: 6px; }
+  .out-value { font-size: 15px; font-weight: 700; font-family: 'Share Tech Mono', monospace; }
+  .output-card.active-out .out-value { color: var(--accent-green); }
+  .output-card.inactive-out .out-value { color: var(--text-secondary); }
+
+  /* CONTROL BUTTONS */
+  .btn-row { display: flex; gap: 8px; }
+  .btn {
+    flex: 1;
+    padding: 10px 8px;
+    border: 1px solid;
+    border-radius: 8px;
+    background: transparent;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: all 0.2s;
+  }
+  .btn:hover { opacity: 0.8; transform: translateY(-1px); }
+  .btn-green { border-color: var(--accent-green); color: var(--accent-green); }
+  .btn-green:hover { background: rgba(57,255,20,0.1); }
+  .btn-red { border-color: var(--accent-red); color: var(--accent-red); }
+  .btn-red:hover { background: rgba(255,49,49,0.1); }
+  .btn-blue { border-color: var(--accent-blue); color: var(--accent-blue); }
+  .btn-blue:hover { background: rgba(0,180,216,0.1); }
+
+  /* FOOTER */
+  .footer {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 10px;
+    color: var(--text-secondary);
+    font-family: 'Share Tech Mono', monospace;
+  }
+
+  /* ALERT BANNER */
+  .alert-banner {
+    display: none;
+    background: rgba(255,49,49,0.1);
+    border: 1px solid var(--accent-red);
+    border-radius: 8px;
+    padding: 10px 16px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent-red);
+    animation: banner-pulse 1s infinite;
+  }
+  @keyframes banner-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+  .alert-banner.hidden { display: none !important; }
+  .alert-icon { font-size: 20px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-left">
+      <div class="logo-box">🏭</div>
+      <div>
+        <div class="title-main">ระบบตรวจสอบชิ้นงาน</div>
+        <div class="title-sub">CAPACITIVE PROXIMITY SENSOR | JCL18A3-B-Z/BX × 6 | ASSEMBLY LINE MONITOR</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div>
+        <div class="clock" id="clock">00:00:00</div>
+        <div class="date-txt" id="dateDisplay">--</div>
+      </div>
+      <div class="system-status">
+        <div class="status-dot"></div>
+        SYSTEM ONLINE
+      </div>
+    </div>
+  </div>
+
+  <!-- ALERT BANNER -->
+  <div class="alert-banner hidden" id="alertBanner">
+    <span class="alert-icon">⚠️</span>
+    <span id="alertText">ตรวจพบชิ้นงานหมด กรุณาเติมชิ้นงาน!</span>
+  </div>
+
+  <!-- SUMMARY -->
+  <div class="summary-row">
+    <div class="summary-card green">
+      <div class="summary-label">SENSOR ACTIVE</div>
+      <div class="summary-value" id="countActive">6</div>
+      <div class="summary-unit">ตัวที่ตรวจจับได้ / 6 ตัว</div>
+    </div>
+    <div class="summary-card red">
+      <div class="summary-label">SENSOR EMPTY</div>
+      <div class="summary-value" id="countEmpty">0</div>
+      <div class="summary-unit">ตัวที่ไม่พบชิ้นงาน</div>
+    </div>
+    <div class="summary-card blue">
+      <div class="summary-label">SYSTEM STATUS</div>
+      <div class="summary-value" id="sysStatusVal" style="font-size:20px; padding-top:8px;">มีของ</div>
+      <div class="summary-unit" id="sysStatusSub">ชิ้นงานพร้อมสำหรับประกอบ</div>
+    </div>
+    <div class="summary-card yellow">
+      <div class="summary-label">SIGNAL TYPE</div>
+      <div class="summary-value" style="font-size:14px; padding-top:6px;">PNP NPN</div>
+      <div class="summary-unit">Capacitive | Range 0–8mm</div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main-layout">
+    <!-- LEFT -->
+    <div>
+      <div class="panel">
+        <div class="panel-title">📡 SENSOR STATUS — สถานะเซนเซอร์ทั้ง 6 ตัว</div>
+        <div class="sensor-grid" id="sensorGrid"></div>
+
+        <div class="box-visual">
+          <div class="box-title">🔲 LAYOUT — ตำแหน่งเซนเซอร์ใต้กล่อง (Top View)</div>
+          <div class="box-layout">
+            <div class="box-container" id="miniGrid"></div>
+            <div style="font-size:11px; color:var(--text-secondary); text-align:center; margin-top:4px; font-family:'Share Tech Mono',monospace;">
+              ● = มีชิ้นงาน (Plastic Detected) &nbsp;|&nbsp; ○ = ไม่มีชิ้นงาน (No Object)
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="right-col">
+
+      <!-- OUTPUT -->
+      <div class="panel">
+        <div class="panel-title">⚡ OUTPUT SIGNAL</div>
+        <div class="output-grid" id="outputGrid">
+          <div class="output-card active-out">
+            <div class="out-label">DO-01 PART OK</div>
+            <div class="out-value" id="do1">ON</div>
+          </div>
+          <div class="output-card inactive-out">
+            <div class="out-label">DO-02 ALARM</div>
+            <div class="out-value" id="do2">OFF</div>
+          </div>
+          <div class="output-card active-out">
+            <div class="out-label">DO-03 READY</div>
+            <div class="out-value" id="do3">ON</div>
+          </div>
+          <div class="output-card inactive-out">
+            <div class="out-label">DO-04 REFILL</div>
+            <div class="out-value" id="do4">OFF</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LOGIC CONDITIONS -->
+      <div class="panel">
+        <div class="panel-title">🧠 LOGIC CONDITIONS</div>
+        <div class="condition-list">
+          <div class="condition-item">
+            <span class="cond-icon">✅</span>
+            <div>
+              <div class="cond-title">เงื่อนไข: มีของ (PART OK)</div>
+              <div class="cond-desc">Sensor ทั้ง 6 ตัว = HIGH<br>→ DO-01 ON | DO-03 ON<br>→ แสดง "มีชิ้นงาน" พร้อมประกอบ</div>
+            </div>
+          </div>
+          <div class="condition-item">
+            <span class="cond-icon">⚠️</span>
+            <div>
+              <div class="cond-title">เงื่อนไข: ของหมด (EMPTY)</div>
+              <div class="cond-desc">Sensor ตัวใดตัวหนึ่ง = LOW<br>→ DO-02 ALARM ON | DO-04 REFILL ON<br>→ หยุดไลน์ + แจ้งเตือนเติมของ</div>
+            </div>
+          </div>
+          <div class="condition-item">
+            <span class="cond-icon">🔧</span>
+            <div>
+              <div class="cond-title">เงื่อนไข: Sensor Error</div>
+              <div class="cond-desc">ไม่มี Signal > 3 วิ → Fault<br>→ แจ้งช่างตรวจสอบสายสัญญาณ<br>→ บันทึก Event Log อัตโนมัติ</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ALARM LOG -->
+      <div class="panel">
+        <div class="panel-title">📋 EVENT LOG</div>
+        <div class="alarm-list" id="alarmList">
+          <div class="alarm-item info">
+            <div class="alarm-time">SYSTEM</div>
+            <div class="alarm-msg">ระบบเริ่มต้นทำงาน — Sensor ทั้ง 6 ตัว Online</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CONTROLS -->
+      <div class="panel">
+        <div class="panel-title">🎮 SIMULATION CONTROL</div>
+        <div class="btn-row" style="margin-bottom:8px;">
+          <button class="btn btn-green" onclick="setAll(true)">▶ ALL ON</button>
+          <button class="btn btn-red" onclick="setAll(false)">■ ALL OFF</button>
+          <button class="btn btn-blue" onclick="resetAlarm()">↺ RESET</button>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-blue" onclick="randomTest()">⚡ RANDOM TEST</button>
+          <button class="btn btn-blue" onclick="clearLog()">🗑 CLEAR LOG</button>
+        </div>
+        <div style="margin-top:10px; font-size:10px; color:var(--text-secondary); font-family:'Share Tech Mono',monospace; line-height:1.6;">
+          คลิกที่ Sensor Card เพื่อสลับสถานะ ON/OFF<br>
+          จำลองการ DETECT และ NOT DETECT ชิ้นงาน
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <span>SENSOR MODEL: JCL18A3-B-Z/BX | CAPACITIVE PROXIMITY | Vcc: 10–30VDC | IP67</span>
+    <span id="footerTime">--</span>
+  </div>
+
+</div>
+
+<script>
+const SENSORS = [
+  { id: 'SNS-01', pos: 'ซ้ายหน้า', active: true },
+  { id: 'SNS-02', pos: 'กลางหน้า', active: true },
+  { id: 'SNS-03', pos: 'ขวาหน้า', active: true },
+  { id: 'SNS-04', pos: 'ซ้ายหลัง', active: true },
+  { id: 'SNS-05', pos: 'กลางหลัง', active: true },
+  { id: 'SNS-06', pos: 'ขวาหลัง', active: true },
+];
+
+let alarmLog = [];
+
+function renderSensors() {
+  const grid = document.getElementById('sensorGrid');
+  const mini = document.getElementById('miniGrid');
+  grid.innerHTML = '';
+  mini.innerHTML = '';
+
+  SENSORS.forEach((s, i) => {
+    // Main card
+    const card = document.createElement('div');
+    card.className = `sensor-card ${s.active ? 'active' : 'empty'}`;
+    card.innerHTML = `
+      <div class="sensor-id">${s.id}</div>
+      <div class="sensor-icon">
+        <div class="sensor-body">${s.active ? '📦' : '⬜'}</div>
+        <div class="signal-ring"></div>
+      </div>
+      <div class="sensor-status-text">${s.active ? 'DETECT' : 'EMPTY'}</div>
+      <div style="font-size:12px; color:var(--text-secondary); margin-top:2px;">${s.pos}</div>
+      <div class="sensor-detail">${s.active ? 'OUTPUT: HIGH | 24VDC' : 'OUTPUT: LOW | 0VDC'}</div>
+    `;
+    card.onclick = () => toggleSensor(i);
+    grid.appendChild(card);
+
+    // Mini sensor
+    const ms = document.createElement('div');
+    ms.className = `mini-sensor ${s.active ? 'on' : 'off'}`;
+    ms.innerHTML = `<div class="mini-dot"></div><div>${s.id.replace('SNS-','S')}</div>`;
+    mini.appendChild(ms);
+  });
+
+  updateSummary();
+  updateOutputs();
+}
+
+function toggleSensor(i) {
+  SENSORS[i].active = !SENSORS[i].active;
+  const now = getTime();
+  if (!SENSORS[i].active) {
+    addLog('crit', now, `⚠ ${SENSORS[i].id} (${SENSORS[i].pos}): ไม่พบชิ้นงาน — ชิ้นงานหมด!`);
+  } else {
+    addLog('info', now, `✔ ${SENSORS[i].id} (${SENSORS[i].pos}): ตรวจจับชิ้นงานได้ — มีของ`);
+  }
+  renderSensors();
+}
+
+function updateSummary() {
+  const active = SENSORS.filter(s => s.active).length;
+  const empty = 6 - active;
+  document.getElementById('countActive').textContent = active;
+  document.getElementById('countEmpty').textContent = empty;
+
+  const banner = document.getElementById('alertBanner');
+  const valEl = document.getElementById('sysStatusVal');
+  const subEl = document.getElementById('sysStatusSub');
+
+  if (empty === 0) {
+    valEl.textContent = '✅ มีของ';
+    valEl.style.color = 'var(--accent-green)';
+    subEl.textContent = 'ชิ้นงานพร้อมสำหรับประกอบ';
+    banner.classList.add('hidden');
+  } else {
+    valEl.textContent = '🚨 ของหมด';
+    valEl.style.color = 'var(--accent-red)';
+    subEl.textContent = `Sensor ${empty} ตัว ไม่พบชิ้นงาน`;
+    banner.classList.remove('hidden');
+    const emptySensors = SENSORS.filter(s => !s.active).map(s => s.id).join(', ');
+    document.getElementById('alertText').textContent = `⚠ ชิ้นงานหมด! Sensor: ${emptySensors} — กรุณาเติมชิ้นงานทันที`;
+  }
+}
+
+function updateOutputs() {
+  const allOn = SENSORS.every(s => s.active);
+  const anyOff = SENSORS.some(s => !s.active);
+
+  setOutput('do1', allOn, 'DO-01 PART OK');
+  setOutput('do2', anyOff, 'DO-02 ALARM');
+  setOutput('do3', allOn, 'DO-03 READY');
+  setOutput('do4', anyOff, 'DO-04 REFILL');
+
+  const cards = document.querySelectorAll('.output-card');
+  const vals = [allOn, anyOff, allOn, anyOff];
+  cards.forEach((c, i) => {
+    c.className = `output-card ${vals[i] ? 'active-out' : 'inactive-out'}`;
+  });
+}
+
+function setOutput(id, on, label) {
+  const el = document.getElementById(id);
+  if (el) {
+    el.textContent = on ? 'ON' : 'OFF';
+    el.style.color = on ? 'var(--accent-green)' : 'var(--text-secondary)';
+  }
+}
+
+function addLog(type, time, msg) {
+  alarmLog.unshift({ type, time, msg });
+  if (alarmLog.length > 30) alarmLog.pop();
+  renderLog();
+}
+
+function renderLog() {
+  const list = document.getElementById('alarmList');
+  list.innerHTML = alarmLog.map(a => `
+    <div class="alarm-item ${a.type}">
+      <div class="alarm-time">${a.time}</div>
+      <div class="alarm-msg">${a.msg}</div>
+    </div>
+  `).join('');
+}
+
+function setAll(val) {
+  SENSORS.forEach((s, i) => {
+    if (s.active !== val) {
+      SENSORS[i].active = val;
+    }
+  });
+  const now = getTime();
+  addLog('info', now, val ? '✔ ALL SENSORS ON — ชิ้นงานพร้อมทุกตำแหน่ง' : '⚠ ALL SENSORS OFF — ไม่พบชิ้นงานทุกตำแหน่ง');
+  renderSensors();
+}
+
+function randomTest() {
+  const now = getTime();
+  SENSORS.forEach((s, i) => {
+    SENSORS[i].active = Math.random() > 0.3;
+  });
+  addLog('warn', now, '⚡ RANDOM TEST — สุ่มสถานะ Sensor');
+  renderSensors();
+}
+
+function resetAlarm() {
+  setAll(true);
+  const now = getTime();
+  addLog('info', now, '↺ RESET — Acknowledge Alarm ระบบกลับสู่ปกติ');
+}
+
+function clearLog() {
+  alarmLog = [];
+  renderLog();
+}
+
+function getTime() {
+  return new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  document.getElementById('dateDisplay').textContent = now.toLocaleDateString('th-TH', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+  document.getElementById('footerTime').textContent = 'LAST UPDATE: ' + getTime();
+}
+
+setInterval(updateClock, 1000);
+updateClock();
+renderSensors();
+addLog('info', getTime(), '🟢 SYSTEM START — JCL18A3-B-Z/BX × 6 พร้อมทำงาน');
+</script>
+</body>
+</html>
